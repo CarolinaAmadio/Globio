@@ -1,0 +1,5 @@
+# all downloaded files 
+*.txt
+
+# output dir of the downloader script 
+CORIOLIS/
