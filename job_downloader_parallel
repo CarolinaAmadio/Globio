@@ -17,26 +17,26 @@ INDEXER_CORIOLIS=CORIOLIS/download/Global_floats.txt
 NAMEINDEXFILE=argo_synthetic-profile_index.txt
 
 mkdir -p CORIOLIS CORIOLIS/download/ $LOCALDIR
-# login10
+# ssh login10
 
 
-#if [ -f $NAMEINDEXFILE ] ; then
-#    rm $NAMEINDEXFILE
-#fi
+if [ -f $NAMEINDEXFILE ] ; then
+    rm $NAMEINDEXFILE
+fi
 
-
-#wget https://data-argo.ifremer.fr/$NAMEINDEXFILE
-# correct lat lon blanks and discard descending profiles 
-#grep -v ",," argo_synthetic-profile_index.txt | grep -v D.nc > argo_synthetic-profile_index_CORR.txt
+# 1. Downloading of file argo_synthetic-profile_index.txt
+wget https://data-argo.ifremer.fr/$NAMEINDEXFILE
+# 2. cancel files with lat lon blanks and discard descending profiles 
+grep -v ",," argo_synthetic-profile_index.txt | grep -v D.nc > argo_synthetic-profile_index_CORR.txt
 
 source /g100_work/OGS23_PRACE_IT/COPERNICUS/py_env_3.9.18/bin/activate
 
-#if [ -f $INDEXER_CORIOLIS ] ; then
-#    rm $INDEXER_CORIOLIS
-#fi
+if [ -f $INDEXER_CORIOLIS ] ; then
+    rm $INDEXER_CORIOLIS
+fi
 
-#python argo_reader_modified.py -i argo_synthetic-profile_index_CORR.txt -o $INDEXER_CORIOLIS
-#echo $INDEXER_CORIOLIS
+# 3. arrange file argo_synthetic-profile_index_CORR.txt removing header
+python argo_reader_modified.py -i argo_synthetic-profile_index_CORR.txt -o $INDEXER_CORIOLIS
 
 export PATH=$PATH:/g100_work/OGS23_PRACE_IT/COPERNICUS/bin
 REMOTEDIR=/ifremer/argo/dac/
@@ -46,6 +46,7 @@ export HOST=$HOST
 export USER=$USER 
 export LOCALDIR=$LOCALDIR
 
+# 4. downloading of the data 
 awk -F, '{print $1}' "$INDEXER_CORIOLIS" | xargs -P12 -I {} bash -c '
     FULL_PATH="{}"
     NAMEFILE="${FULL_PATH##*/}"
@@ -53,32 +54,10 @@ awk -F, '{print $1}' "$INDEXER_CORIOLIS" | xargs -P12 -I {} bash -c '
     if [ -f "$LOCALDIR/${NAMEFILE}" ]; then
         echo "$LOCALDIR/${NAMEFILE} already exists, skipping download."
     else
-        # Se il file non esiste, scaricalo usando ncftpget
-        echo /g100_work/OGS23_PRACE_IT/COPERNICUS/bin/ncftpget -u "$USER" "$HOST" "$LOCALDIR" "$REMOTEDIR/${NAMEFILE}"
+        /g100_work/OGS23_PRACE_IT/COPERNICUS/bin/ncftpget -u "$USER" "$HOST" "$LOCALDIR" "$REMOTEDIR/{}"
         echo "Process $BASHPID has finished downloading $NAMEFILE in $LOCALDIR"
     fi
-
-    #echo "Process $BASHPID is downloading {}"
-    #echo /g100_work/OGS23_PRACE_IT/COPERNICUS/bin/ncftpget -u "$USER" "$HOST" "$LOCALDIR" "$REMOTEDIR/{}"    
-    # /g100_work/OGS23_PRACE_IT/COPERNICUS/bin/ncftpget -u "$USER" "$HOST" "$LOCALDIR" "$REMOTEDIR/{}"
-    #echo "Process $BASHPID has finished downloading {}"
 '
 
+echo "NetCDF files have been downloaded. Now, perform count checks before arranging the structure of the CORIOLIS directory and creating Float_Index.txt"
 
-cd $LOCALDIR
-for I in `ls *nc ` ; do
-   WMO_DIR=${I:2:7}
-   CORIOLIS_DIR=CORIOLIS/${WMO_DIR}/
-   mkdir -p ${BASEDIR}/$CORIOLIS_DIR
-   mv ${BASEDIR}/${LOCALDIR}/$I ${BASEDIR}/$CORIOLIS_DIR
-done
-
-INDEXER_0=CORIOLIS/Float_Index_0.txt
-INDEXER=CORIOLIS/Float_Index.txt
-
-cd $BASEDIR 
-
-cp -r ${BASEDIR}/CORIOLIS/download/Global_floats.txt $INDEXER_0
-python dump_index_from_txt.py -i $INDEXER_0 -o $INDEXER
-
-echo "tutto ok"
