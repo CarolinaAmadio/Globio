@@ -3,3 +3,7 @@
 
 # output dir of the downloader script 
 CORIOLIS/
+
+bit.sea/
+BUILD_CHECKED_DATASET/bit.sea/
+DOWNLOAD_data_from_CORIOLISftp/bit.sea/
