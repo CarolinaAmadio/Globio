@@ -36,6 +36,20 @@ def get_outfile(p,outdir):
     return filename
 
 
+def write_report(filename, df_float_index):
+    print(f"Processing file: {filename}")
+    df_float_index = df_float_index[df_float_index[0] != filename]
+    file_path = "Discarded_PresTemp_noteq_PresSal.csv"
+    if not os.path.exists(file_path):
+        df = pd.DataFrame({'Namefile': [filename]})
+        df.to_csv(file_path, index=False)
+    else:
+        df = pd.read_csv(file_path)
+        new_row = pd.DataFrame({'Namefile': [filename]})
+        df = pd.concat([df, new_row], ignore_index=True)
+        df.to_csv(file_path, index=False)
+    return df_float_index
+
 #INPUTDIR='/g100_scratch/userexternal/camadio0/GLOBIO/CORIOLIS/'
 #OUTDIR ='/g100_scratch/userexternal/camadio0/GLOBIO/'
 
@@ -49,6 +63,8 @@ df_float_index= pd.read_csv( input_file  , header=None)
 INDEX_FILE =  superfloat_generator.read_float_read_float_index(input_file)
 nFiles     =  INDEX_FILE.size
 
+VARLIST=['TEMP', 'TEMP_QC', 'TEMP_ADJUSTED', 'TEMP_ADJUSTED_QC', 'PSAL', 'PSAL_QC', 'PSAL_ADJUSTED', 'PSAL_ADJUSTED_QC'] 
+
 for iFile in range(nFiles): # loop su tuttie le righe del float index
     timestr          = INDEX_FILE['date'][iFile].decode()
     lon              = INDEX_FILE['longitude' ][iFile]
@@ -60,23 +76,36 @@ for iFile in range(nFiles): # loop su tuttie le righe del float index
     filename=filename.replace('coriolis/','').replace('profiles/','')
     if 'TEMP'  in available_params:
         p=bio_float.profile_gen(lon, lat, float_time, filename, available_params,parameterdatamode)
-        PresT, Temp, QcT = p.read('TEMP', read_adjusted=False)
-        PresT, Sali, QcS = p.read('PSAL', read_adjusted=False)
         outfile = get_outfile(p, OUTDIR)
-        if len(Temp) != len(Sali):
-           # read float_index  
-           print(filename)
-           df_float_index  = df_float_index[df_float_index[0] != filename ]
-           file_path = "Discarded_PresTemp_noteq_PresSal.csv"
-           if not os.path.exists(file_path):
-                 df = pd.DataFrame({'Namefile': [filename]})
-                 df.to_csv(file_path, index=False)
+        print(outfile)
+        try:
+           nc = Dataset(INPUTDIR+'/'+filename)
+           rejected=False
+           for VAR in VARLIST:
+               serv = nc.variables[VAR][:]
+               # file type is ok
+               if len(serv) > 0 and serv.dtype == np.dtype('float32'):
+                  continue
+               #verify some charatcer is empty 
+               elif np.all(np.core.defchararray.equal(serv, b'')):
+                  rejected=True 
+                  df_float_index = write_report(filename, df_float_index)
+                  break 
+        
+           if rejected: # some array in VARLIST is empty
+              df_float_index = write_report(filename, df_float_index)           
+        
            else:
-                 df = pd.read_csv(file_path)
-                 new_row = pd.DataFrame({'Namefile': [filename]})
-                 df = pd.concat([df, new_row], ignore_index=True)
-                 df.to_csv(file_path, index=False)            
-
+              PresT, Temp, QcT = p.read('TEMP', read_adjusted=False)
+              PresT, Sali, QcS = p.read('PSAL', read_adjusted=False)
+              if len(Temp) != len(Sali):
+                 # len mismatch btween temp and salinity 
+                 df_float_index = write_report(filename, df_float_index)
+        
+        except OSError as e: #file corrotto
+           rejected=True  
+           df_float_index = write_report(filename, df_float_index)
+           continue
 
 df_float_index.reset_index(drop=True, inplace=True)
 df_float_index.to_csv( INPUTDIR+ '/Float_Index.txt', header=False, index=False)
