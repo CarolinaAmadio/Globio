@@ -12,3 +12,7 @@ bit.sea/
 __pycache__
 0_DOWNLOAD_data_from_CORIOLISftp/__pycache__
 1_BUILD_CHECKED_DATASET/__pycache__
+
+slurm*out
+0_DOWNLOAD_data_from_CORIOLISftp/slurm*out
+1_BUILD_CHECKED_DATASET/slurm*out
