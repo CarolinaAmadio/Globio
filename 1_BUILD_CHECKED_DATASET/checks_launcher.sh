@@ -30,6 +30,8 @@ mkdir -p $DATASET $DIAG_DIR
 
 opa_prex "python superfloat_discard.py -o $ONLINE_REPO/CORIOLIS/ -i  $ONLINE_REPO/CORIOLIS/"
 
+exit 0
+
 opa_prex "python superfloat_chla_global.py     -o $DATASET -u $ONLINE_REPO/CORIOLIS/$UPDATE_FILE"
 opa_prex  "python superfloat_oxygen_global.py  -o $DATASET -u $ONLINE_REPO/CORIOLIS/$UPDATE_FILE -O $DIAG_DIR"
 rm -r $DIAG_DIR
