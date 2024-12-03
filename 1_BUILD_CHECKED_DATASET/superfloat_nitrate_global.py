@@ -40,8 +40,8 @@ if ((args.datestart == 'NO_data') or (args.dateend == 'NO_data')) & (args.update
     raise ValueError("No file nor data inserted: you have to pass both datastart and dataeend")
 
 from bitsea.instruments import bio_float
-from bitsea.Float.canyon_b_N3n import canyon_nitrate_correction
-from bitsea.Float.woa_N3n import woa_nitrate_correction
+#from bitsea.Float.canyon_b_N3n import canyon_nitrate_correction
+#from bitsea.Float.woa_N3n import woa_nitrate_correction
 from bitsea.commons.time_interval import TimeInterval
 from bitsea.basins.region import Rectangle
 import superfloat_generator
@@ -54,9 +54,11 @@ import numpy as np
 from bitsea.commons.layer import Layer
 import seawater as sw
 import datetime
-
+from netCDF4 import Dataset
 import bitsea.basins.V2 as basV2
-from bitsea.static.climatology import get_climatology
+#from bitsea.static.climatology import get_climatology
+import sys
+
 
 class Metadata():
     def __init__(self, filename):
@@ -68,13 +70,28 @@ class Metadata():
 
 SUBLIST = basV2.P.basin_list
 LayerList=[Layer(400,600),Layer(600,800),Layer(800,1000)]
-N3n_clim, N3n_std = get_climatology('N3n', SUBLIST, LayerList)
+#N3n_clim, N3n_std = get_climatology('N3n', SUBLIST, LayerList)
 
 
 def get_outfile(p,outdir):
     wmo=p._my_float.wmo
     filename="%s%s/%s" %(outdir,wmo, os.path.basename(p._my_float.filename))
     return filename
+
+def check_bgcvar_empty(outfile,VARNAME='NITRATE' ):
+    coriolis_file=outfile.replace('SUPERFLOAT','CORIOLIS')
+    nc = Dataset(coriolis_file)
+    VARLIST= [VARNAME + '_ADJUSTED',  VARNAME+ '_ADJUSTED_QC']
+    listempty=[]
+    for VAR in VARLIST:
+        serv = nc.variables[VAR][:]
+        if isinstance(serv, np.ma.MaskedArray):
+           if np.all(np.ma.getdata(serv) == b'') or np.all(serv.mask):
+              listempty.append(VAR)
+           else:
+              if np.all(serv == b''):
+                 listempty.append(VAR)
+    return len(listempty)>0
 
 def convert_nitrate(p,pres,profile):
     '''
@@ -154,40 +171,68 @@ def nitrate_algorithm(p, outfile, metadata, writing_mode):
     Pres, _, _ = pCor.read('TEMP', read_adjusted=False)
     if len(Pres)<5:
         print("few values in Coriolis TEMP in " + pCor._my_float.filename, flush=True)
+        log_to_csv(filename, "len_pres_temp_less_5", discarded_file)
         return
+
     F = p._my_float
-    if F.status_var('NITRATE')=='R': return
-
-    Pres, Value, Qc= p.read("NITRATE", read_adjusted=True)
-    nP=len(Pres)
-    if nP<5 :
-        print("few values for " + F.filename, flush=True)
-        return
-    if Pres[-1]<100:
-        print("few values for " + F.filename, flush=True)
+    if F.status_var('NITRATE')=='R': 
+        log_to_csv(filename, "RT_nit_not_used ", discarded_file)
         return
 
-    os.system('mkdir -p ' + os.path.dirname(outfile))
-    if p._my_float.status_var('NITRATE')=='D':
-        metadata.status_var = 'D'
-        dump_nitrate_file(outfile, p, Pres, Value, Qc, metadata,mode=writing_mode)
-        return
+    EMPTY_VAR_CHECK=check_bgcvar_empty(outfile, 'NITRATE' )
+    if EMPTY_VAR_CHECK :
+        log_to_csv(filename, "var_is_empty", discarded_file)
+        return None, None, None, metadata
+    else:
+
+        Pres, Value, Qc= p.read("NITRATE", read_adjusted=True)
+        nP=len(Pres)
+        if nP<5 :
+            print("few values for " + F.filename, flush=True)
+            log_to_csv(filename, "len_pres_nitr_less_5", discarded_file)
+            return
+        if Pres[-1]<100:
+            print("few values for " + F.filename, flush=True)
+            log_to_csv(filename, "pres_nitr_only at_surf", discarded_file)
+            return
+
+        os.system('mkdir -p ' + os.path.dirname(outfile))
+        if p._my_float.status_var('NITRATE')=='D':
+            metadata.status_var = 'D'
+            dump_nitrate_file(outfile, p, Pres, Value, Qc, metadata,mode=writing_mode)
+            return
 
 
-    if p._my_float.status_var('NITRATE')=='A':
-        metadata.status_var="A"
-        dump_nitrate_file(outfile, p, Pres, Value, Qc, metadata,mode=writing_mode)
-        return
-
-
+        if p._my_float.status_var('NITRATE')=='A':
+            metadata.status_var="A"
+            dump_nitrate_file(outfile, p, Pres, Value, Qc, metadata,mode=writing_mode)
+            return
 
 
 OUTDIR = addsep(args.outdir)
 input_file=args.update_file
-
 #INDEX_FILE=superfloat_generator.read_float_update(input_file)
 INDEX_FILE=superfloat_generator.read_float_read_float_index(input_file)
 nFiles=INDEX_FILE.size
+discarded_file = "discarded_NITRATE.csv" # file thalist all files disvcarded and motivation
+
+def log_to_csv(file_name, motivation_text, discarded_file):
+    """
+    write a df file with discarded files nc and their  motivation
+    name file in input of script discarded_file = "discarded_CHLA.csv"
+    Parameters:
+        file_name (str): The name of the file to log.
+        motivation_text (str): The reason or motivation to log.
+        csv_file (str): The name of the CSV file to update or create.
+    """
+    df = pd.DataFrame({"file_name": [file_name], "motivation": [motivation_text]})
+    if os.path.exists(discarded_file):
+        df.to_csv(discarded_file, mode="a", header=False, index=False)
+    else:
+        df.to_csv(discarded_file, index=False)
+
+import pandas as pd
+
 import sys
 for iFile in range(nFiles):
     timestr          = INDEX_FILE['date'][iFile].decode()
@@ -200,14 +245,20 @@ for iFile in range(nFiles):
     float_time = datetime.datetime.strptime(timestr, '%Y%m%d-%H:%M:%S')
     filename=filename.replace('coriolis/','').replace('profiles/','')
     print(float_time)
-    if 'NITRATE' not in available_params: continue
+    if 'NITRATE' not in available_params: 
+        log_to_csv(filename, "No_nitrate_in_available_params", discarded_file)
+    else:
+        pCor=bio_float.profile_gen(lon, lat, float_time, filename, available_params,parameterdatamode)
+        outfile = get_outfile(pCor,OUTDIR)
+        writing_mode=superfloat_generator.writing_mode(outfile)
 
-    pCor=bio_float.profile_gen(lon, lat, float_time, filename, available_params,parameterdatamode)
-    outfile = get_outfile(pCor,OUTDIR)
-    writing_mode=superfloat_generator.writing_mode(outfile)
-
-    metadata = Metadata(pCor._my_float.filename)
-    #sys.exit('oooooo')
-    nitrate_algorithm(pCor, outfile, metadata,writing_mode)
+        metadata = Metadata(pCor._my_float.filename)
+        f_serv_ca = pCor._my_float.filename
+        try:
+            print(f_serv_ca)
+            with Dataset(f_serv_ca , mode='r') as nc_file:
+                nitrate_algorithm(pCor, outfile, metadata,writing_mode)
+        except:
+            log_to_csv(filename, "corrupted_file", discarded_file)
 
 
