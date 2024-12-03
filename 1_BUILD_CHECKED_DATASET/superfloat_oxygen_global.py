@@ -19,11 +19,6 @@ def argument():
                                 required = True,
                                 default = "/gpfs/scratch/userexternal/gbolzon0/SUPERFLOAT/",
                                 help = 'path of the Superfloat dataset ')
-    parser.add_argument(   '--outdiag','-O',
-                                type = str,
-                                required = True,
-                                default = "/gpfs/scratch/userexternal/gbolzon0/SUPERFLOAT/",
-                                help = 'path for statistics, diagnostics, logs')
     parser.add_argument(   '--force', '-f',
                                 action='store_true',
                                 help = """Overwrite existing files
@@ -58,6 +53,7 @@ import seawater as sw
 from datetime import datetime, timedelta
 import bitsea.basins.OGS as OGS
 from bitsea.instruments.var_conversions import FLOATVARS
+from netCDF4 import Dataset
 #from commons_local import cross_Med_basins, save_report
 
 
@@ -66,32 +62,13 @@ class Metadata():
         self.filename = filename
         self.status_var = status_var
 
-
-def remove_bad_sensors(Profilelist,var):
-    '''
-
-    Subsetter, filtering out bad sensors for that var
-
-     Arguments:
-      * Profilelist * list of Profile objects
-      * var         * string
-
-      Returns:
-        a list of Profile Objects
-    '''
- 
-    OUT_N3n = ["6903197","6901767","6901773","6901771"]
-    OUT_O2o = ["6901510"]
-    OUT_O2o = ["6901766",'6903235','6902902',"6902700"]
-    # 0 6901766 has negative values
-
-    if ( var == 'SR_NO3' ):
-        return [p for p in Profilelist if p.name() not in OUT_N3n]
-
-    if ( var == 'DOXY' ):
-        return [p for p in Profilelist if p.name() not in OUT_O2o]
-
-    return Profilelist
+def check_units_doxy2(p,outfile):
+    coriolis_file=outfile.replace('SUPERFLOAT','CORIOLIS')
+    nc = Dataset(coriolis_file)
+    doxy_var = nc.variables['DOXY2']
+    doxy_units = doxy_var.units
+    if doxy_units == 'micromole/kg': return True
+    else: return False
 
 def convert_oxygen(p,doxypres,doxyprofile):
     '''
@@ -175,6 +152,21 @@ def get_outfile(p,outdir):
     filename="%s%s/%s" %(outdir,wmo, os.path.basename(p._my_float.filename))
     return filename
 
+def check_bgcvar_empty(outfile,VARNAME='DOXY' ):
+    coriolis_file=outfile.replace('SUPERFLOAT','CORIOLIS')
+    nc = Dataset(coriolis_file)
+    VARLIST= [VARNAME + '_ADJUSTED',  VARNAME+ '_ADJUSTED_QC']
+    listempty=[]
+    for VAR in VARLIST:
+        serv = nc.variables[VAR][:]
+        if isinstance(serv, np.ma.MaskedArray):
+           if np.all(np.ma.getdata(serv) == b'') or np.all(serv.mask):
+              listempty.append(VAR)
+           else:
+              if np.all(serv == b''):
+                 listempty.append(VAR)
+    return len(listempty)>0
+
 def read_doxy(pCor):
     Pres, Value, Qc = pCor.read('DOXY',read_adjusted=True)
     nP=len(Pres)
@@ -184,16 +176,39 @@ def read_doxy(pCor):
     ValueCconv=convert_oxygen(pCor, Pres, Value)
     return Pres, ValueCconv, Qc
 
-def treating_coriolis(pCor):
-    metadata = Metadata(pCor._my_float.filename, pCor._my_float.status_var('DOXY'))
-    metadata.status_var = pCor._my_float.status_var('DOXY')
-    # only adjusted and delayed
-    if pCor._my_float.status_var('DOXY') in ['A','D'] :    #istanza di BioFloat
-        Pres, DOXY, Qc = read_doxy(pCor)
-        return Pres, DOXY, Qc, metadata
+def treating_coriolis(pCor, outfile=None):
+    if 'DOXY' in available_params.rsplit(" "):
+        NAMEVAR='DOXY'
+    elif 'DOXY2' in available_params.rsplit(" "):
+        NAMEVAR='DOXY2'
     else:
-        print("R -- not dumped ", pCor._my_float.filename, flush=True)
-        return None, None, None, metadata
+        print(pCor._my_float.filename + 'doesnt have doxy params: ')
+        print( available_params.rsplit(" "))
+        log_to_csv(filename, "no_doxy_params", discarded_file)
+        raise ValueError("no doxy in the profile")
+
+    metadata = Metadata(pCor._my_float.filename, pCor._my_float.status_var(NAMEVAR))
+    metadata.status_var = pCor._my_float.status_var(NAMEVAR)
+    # only adjusted and delayed
+    if pCor._my_float.status_var(NAMEVAR) in ['A','D'] :    #istanza di BioFloat
+        if not outfile: # non do la stringa di outfile come  in bitsea originale
+           Pres, DOXY, Qc = read_doxy(pCor)
+           return Pres, DOXY, Qc, metadata
+        else:
+           coriolis_file=outfile.replace('SUPERFLOAT','CORIOLIS')
+           nc = Dataset(coriolis_file)
+           EMPTY_VAR_CHECK=check_bgcvar_empty(outfile, NAMEVAR )
+           if EMPTY_VAR_CHECK :
+               log_to_csv(filename, "var_is_empty", discarded_file)
+               return None, None, None, metadata
+           else:
+               Pres, DOXY , Qc=pCor.read('DOXY', read_adjusted=True)
+               return Pres, DOXY, Qc, metadata
+
+    else:
+       print("R -- not dumped ", pCor._my_float.filename, flush=True)
+       log_to_csv(filename, "RT_doxy_not_used ", discarded_file)
+       return None, None, None, metadata
 
 def doxy_algorithm(p, outfile, metadata,writing_mode):
     '''
@@ -202,34 +217,45 @@ def doxy_algorithm(p, outfile, metadata,writing_mode):
     * Profilelist_hist * List of profile object, provided by load_history()
     * Dataset          * dictionary, provided by load_history()
     '''
-    #Pres, Value, Qc  = p.read('DOXY',read_adjusted=False)
     Pres, _, _ = p.read('TEMP', read_adjusted=False)
     if len(Pres)<5 or (Pres is None):
         print("few values in Coriolis TEMP in " + p._my_float.filename, flush=True)
+        log_to_csv(filename, "len_pres_temp_less_5", discarded_file)
         return
     
     os.system('mkdir -p ' + os.path.dirname(outfile))
-    Pres, DOXY, Qc, metadata = treating_coriolis(p)
-
-    if Pres is None: return # no data
-    dump_oxygen_file(outfile, p, Pres, DOXY, Qc, metadata,mode=writing_mode)
-
-
-# start program
-#opa_prex "python superfloat_oxygen.py   -o $DATASET -u $UPDATE_FILE -O $DIAG_DIR"
-# outdir      =  $ONLINE_REPO/SUPERFLOAT
-# update_file =  filtered_Float_Index.txt
-#DIAG_DIR=$DATASET/oxy_diag
-
+    if CHECK_EMPTY_VALUES:
+        Pres, DOXY, Qc, metadata = treating_coriolis(p, outfile)
+    else:    
+        Pres, DOXY, Qc, metadata = treating_coriolis(p)
+    if Pres is None: 
+        log_to_csv(filename, "pres_none", discarded_file)
+        return # no data
+    dump_oxygen_file(outfile, p, Pres, DOXY, Qc, metadata,mode=writing_mode )
 
 OUTDIR = addsep(args.outdir)
-OUT_META = addsep(args.outdiag)
 input_file=args.update_file
-
-#INDEX_FILE=superfloat_generator.read_float_update(input_file)
+CHECK_EMPTY_VALUES=True
 INDEX_FILE=superfloat_generator.read_float_read_float_index(input_file)
 nFiles=INDEX_FILE.size
+discarded_file = "discarded_DOXY.csv" # file that will ist all files disvcarded and motivation
 
+def log_to_csv(file_name, motivation_text, discarded_file):
+    """
+    write a df file with discarded files nc and their  motivation
+    name file in input of script discarded_file = "discarded_CHLA.csv"
+    Parameters:
+        file_name (str): The name of the file to log.
+        motivation_text (str): The reason or motivation to log.
+        csv_file (str): The name of the CSV file to update or create.
+    """
+    df = pd.DataFrame({"file_name": [file_name], "motivation": [motivation_text]})
+    if os.path.exists(discarded_file):
+        df.to_csv(discarded_file, mode="a", header=False, index=False)
+    else:
+        df.to_csv(discarded_file, index=False)
+
+import pandas as pd
 import sys
 for iFile in range(nFiles):
     timestr          = INDEX_FILE['date'][iFile].decode()
@@ -242,13 +268,29 @@ for iFile in range(nFiles):
     float_time = datetime.strptime(timestr, '%Y%m%d-%H:%M:%S')
     filename=filename.replace('coriolis/','').replace('profiles/','')
 
-
-
-    if 'DOXY' in available_params:
-
+    if 'DOXY' in available_params.rsplit(" "):
         p=bio_float.profile_gen(lon, lat, float_time, filename, available_params,parameterdatamode)
         outfile = get_outfile(p,OUTDIR)
         writing_mode=superfloat_generator.writing_mode(outfile)
         metadata = Metadata(p._my_float.filename, p._my_float.status_var('DOXY'))
         doxy_algorithm(p, outfile, metadata,writing_mode)
+    elif 'DOXY2' in available_params.rsplit(" "):
+        p=bio_float.profile_gen(lon, lat, float_time, filename, available_params,parameterdatamode)
+        outfile = get_outfile(p,OUTDIR)
+        BOOL= check_units_doxy2(p,outfile)
+        if BOOL:
+           writing_mode=superfloat_generator.writing_mode(outfile)
+           metadata = Metadata(p._my_float.filename, p._my_float.status_var('DOXY2'))
+           f_serv_ca = pCor._my_float.filename
+           try:
+               with Dataset(f_serv_ca , mode='r') as nc_file:
+                   doxy_algorithm(p, outfile, metadata,writing_mode)
+           except:
+               log_to_csv(filename, "corrupted_file", discarded_file)
+        else:
+           log_to_csv(filename, "units_doxy_no_micromole/kg", discarded_file) 
+
+
+    else:
+        log_to_csv(filename, "No_doxy_in_available_params", discarded_file)
 
