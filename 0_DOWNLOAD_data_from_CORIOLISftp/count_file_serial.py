@@ -3,6 +3,8 @@ import glob
 import os
 import multiprocessing
 
+DIR_INDEX_FILE = "/g100_work/OGS_devC/camadio/GLOBIO/CORIOLIS/"
+
 # Funzione globale per controllare se un file esiste nella directory
 def check_file_exists(args):
     filename, dir_path = args
