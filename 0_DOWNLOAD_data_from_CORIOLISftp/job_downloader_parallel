@@ -25,8 +25,8 @@ if [ -f $NAMEINDEXFILE ] ; then
     rm $NAMEINDEXFILE
 fi
 
-# 1. Downloading of file argo_synthetic-profile_index.txt
-wget https://data-argo.ifremer.fr/$NAMEINDEXFILE
+# 1. Downloading of file --> argo_synthetic-profile_index.txt
+wget https://data-argo.ifremer.fr/$NAMEINDEXFILE   
 # 2. cancel files with lat lon blanks and discard descending profiles 
 grep -v ",," $NAMEINDEXFILE | grep -v D.nc > $BASEDIR/argo_synthetic-profile_index_CORR.txt
 
@@ -37,6 +37,7 @@ if [ -f $INDEXER_CORIOLIS ] ; then
 fi
 
 # 3. arrange file argo_synthetic-profile_index_CORR.txt removing header
+# outupt --> download/Global_floats.txt
 python argo_reader_modified.py -i $BASEDIR/argo_synthetic-profile_index_CORR.txt -o $INDEXER_CORIOLIS
 
 export PATH=$PATH:/g100_work/OGS23_PRACE_IT/COPERNICUS/bin
