@@ -48,11 +48,27 @@ import scipy.io as NC
 import numpy as np
 import datetime
 import pandas as pd
+from netCDF4 import Dataset
 
 class Metadata():
     def __init__(self, filename):
         self.filename = filename
         self.status_var = 'n'
+
+def check_bgcvar_empty(outfile,VARNAME='BBP700' ):
+    coriolis_file=outfile.replace('SUPERFLOAT','CORIOLIS')
+    nc = Dataset(coriolis_file)
+    VARLIST= [VARNAME + '_ADJUSTED',  VARNAME+ '_ADJUSTED_QC']
+    listempty=[]
+    for VAR in VARLIST:
+        serv = nc.variables[VAR][:]
+        if isinstance(serv, np.ma.MaskedArray):
+           if np.all(np.ma.getdata(serv) == b'') or np.all(serv.mask):
+              listempty.append(VAR)
+           else:
+              if np.all(serv == b''):
+                 listempty.append(VAR)
+    return len(listempty)>0
 
 def dump_bbp700_file(outfile, p, Pres, Value, Qc, metadata, mode='w'):
     nP=len(Pres)
@@ -126,24 +142,54 @@ def bbp_algorithm(pCor, outfile, metadata,writing_mode):
     Pres, _, _ = pCor.read('TEMP', read_adjusted=False)
     if len(Pres)<5:
         print("few values in Coriolis TEMP in " + pCor._my_float.filename, flush=True)
+        log_to_csv(filename, "len_pres_temp_less_5", discarded_file)
         return
     os.system('mkdir -p ' + os.path.dirname(outfile))
     metadata.status_var = pCor._my_float.status_var('BBP700')
-    if metadata.status_var in ['A', 'D']:
-        Pres, Value, Qc = pCor.read('BBP700', read_adjusted=True)
+    
+    EMPTY_VAR_CHECK=check_bgcvar_empty(outfile,'BBP700')
+    if EMPTY_VAR_CHECK :
+        log_to_csv(filename, "var_is_empty", discarded_file)
+        return None, None, None, metadata
     else:
-        Pres, Value, Qc = pCor.read('BBP700', read_adjusted=False)
-    if Pres is None: return
-    if len(Pres)<5:
-        print("few values in Coriolis for BBP in " + pCor._my_float.filename, flush=True)
-        return
-    dump_bbp700_file(outfile, pCor, Pres, Value, Qc, metadata,mode=writing_mode)
+
+        if metadata.status_var in ['A', 'D']:
+            Pres, Value, Qc = pCor.read('BBP700', read_adjusted=True)
+        else:
+            Pres, Value, Qc = pCor.read('BBP700', read_adjusted=False)
+        if Pres is None: 
+            log_to_csv(filename, "pres_none", discarded_file)
+            return
+        if len(Pres)<5:
+            print("few values in Coriolis for BBP in " + pCor._my_float.filename, flush=True)
+            log_to_csv(filename, "len_pres_bbp700_less_5", discarded_file)
+            return
+        dump_bbp700_file(outfile, pCor, Pres, Value, Qc, metadata,mode=writing_mode)
 
 OUTDIR = addsep(args.outdir)
 input_file=args.update_file
 #INDEX_FILE=superfloat_generator.read_float_update(input_file)
 INDEX_FILE=superfloat_generator.read_float_read_float_index(input_file)
 nFiles=INDEX_FILE.size
+discarded_file = "discarded_bbp700.csv" # file that will ist all files disvcarded and motivation
+
+def log_to_csv(file_name, motivation_text, discarded_file):
+    """
+    write a df file with discarded files nc and their  motivation
+    name file in input of script discarded_file = "discarded_CHLA.csv"
+    Parameters:
+        file_name (str): The name of the file to log.
+        motivation_text (str): The reason or motivation to log.
+        csv_file (str): The name of the CSV file to update or create.
+    """
+    df = pd.DataFrame({"file_name": [file_name], "motivation": [motivation_text]})
+    if os.path.exists(discarded_file):
+        df.to_csv(discarded_file, mode="a", header=False, index=False)
+    else:
+        df.to_csv(discarded_file, index=False)
+
+import pandas as pd
+import sys
 
 for iFile in range(nFiles):
     timestr          = INDEX_FILE['date'][iFile].decode()
@@ -162,4 +208,11 @@ for iFile in range(nFiles):
         writing_mode=superfloat_generator.writing_mode(outfile)
 
         metadata = Metadata(pCor._my_float.filename)
-        bbp_algorithm(pCor, outfile, metadata, writing_mode)
+        f_serv_ca = pCor._my_float.filename
+        try:
+            with Dataset(f_serv_ca , mode='r') as nc_file:
+                bbp_algorithm(pCor, outfile, metadata, writing_mode)
+        except:
+            log_to_csv(filename, "corrupted_file", discarded_file)
+    else:
+        log_to_csv(filename, "No_bbp700_in_available_params", discarded_file)
