@@ -92,7 +92,9 @@ def file_header_content(filename,VARLIST, avail_params=None):
 
     lon=ncIN.variables['LONGITUDE'].data[0]
     lat=ncIN.variables['LATITUDE'].data[0]
-    BadPosition = (lon > 90.) or (lon < -90.) or (lat > 90.) or (lat < -90.) 
+    #BadPosition = (lon > 90.) or (lon < -90.) or (lat > 90.) or (lat < -90.) 
+    BadPosition = (lon > 180.) or (lon < -180.) or (lat > 90.) or (lat < -90.)
+
     if BadPosition:
         print("Bad position in file : " + filename)
         ncIN.close()
