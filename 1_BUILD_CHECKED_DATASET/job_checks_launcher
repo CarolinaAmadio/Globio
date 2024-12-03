@@ -3,7 +3,7 @@
 #SBATCH --job-name=checks
 #SBATCH -N1
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=4:00:00
+#SBATCH --time=08:20:00
 #SBATCH --mem=300gb
 #SBATCH --account=OGS_devC
 #SBATCH --partition=g100_meteo_prod
@@ -22,9 +22,18 @@ UPDATE_FILE=Float_Index.txt
 # 1. perform 3 checks to avoid having corrupted files or empty vars
 # ca 1 hr each 100 000 files 
 date
-#opa_prex "python superfloat_discard.py -o $ONLINE_REPO/CORIOLIS/ -i  $ONLINE_REPO/CORIOLIS/" 
-date
+# questo lavora solo sul float index producendo un files di scartati:
+#Discarded_PresTemp_noteq_PresSal.csv
+# e togliendoli da floatdindex
+#opa_prex "python coriolis_discard_csv.py -o $ONLINE_REPO/CORIOLIS/ -i  $ONLINE_REPO/CORIOLIS/"
+mkdir -p $ONLINE_REPO/CORIOLIS/discarded/
 
+#zip -r $ONLINE_REPO/CORIOLIS.zip $ONLINE_REPO/CORIOLIS
+
+#opa_prex "python coriolis_discard_files.py -i $ONLINE_REPO/CORIOLIS/ -o  $ONLINE_REPO/CORIOLIS/discarded/ -ifile Discarded_PresTemp_noteq_PresSal.csv"
+#cp -r job_checks_launcher $ONLINE_REPO/CORIOLIS/discarded/ 
+#date
+# controlla ora che il numero di files torni tra float_index0.txt = float_index.txt  + Discarded_PresTemp_noteq_PresSal.csv drop duplicates
 
 ##################################################################################################
 # manage the outputs *txt and * csv in CORIOLIS dir
@@ -47,7 +56,6 @@ mv $ONLINE_REPO/CORIOLIS/*_partial_cleaned*txt $ODIR
 mv $ONLINE_REPO/CORIOLIS/*txt_2bkp $ODIR
 mv $ONLINE_REPO/CORIOLIS/*csv $ODIR
 cp -r $ONLINE_REPO/CORIOLIS/*.txt $ODIR
-
 date
 ##################################################################################################
 # end 
@@ -56,17 +64,16 @@ date
 # 2. perform basic checks  
 DATASET=/g100_work/OGS_devC/camadio/GLOBIO/SUPERFLOAT/
 mkdir -p $DATASET
-opa_prex "python superfloat_chla_global.py     -o $DATASET -u $ONLINE_REPO/CORIOLIS/$UPDATE_FILE"
+#opa_prex "python superfloat_chla_global.py     -o $DATASET -u $ONLINE_REPO/CORIOLIS/$UPDATE_FILE"
 date
 
-exit 0
- 
 opa_prex "python superfloat_oxygen_global.py   -o $DATASET -u $ONLINE_REPO/CORIOLIS/$UPDATE_FILE"
 opa_prex "python superfloat_nitrate_global.py  -o $DATASET -u $ONLINE_REPO/CORIOLIS/$UPDATE_FILE"
+exit 0
 opa_prex "python superfloat_par_global.py      -o $DATASET -u $ONLINE_REPO/CORIOLIS/$UPDATE_FILE"
 opa_prex "python superfloat_bbp700_global.py   -o $DATASET -u $ONLINE_REPO/CORIOLIS/$UPDATE_FILE"
 opa_prex "python superfloat_ph_global.py       -o $DATASET -u $ONLINE_REPO/CORIOLIS/$UPDATE_FILE"
-date
+#date
 # 3. write the float index
 opa_prex "python dump_index.py -i $DATASET -o $DATASET/Float_Index.txt -t superfloat"
 date
