@@ -16,3 +16,8 @@ __pycache__
 slurm*out
 0_DOWNLOAD_data_from_CORIOLISftp/slurm*out
 1_BUILD_CHECKED_DATASET/slurm*out
+
+
+1_BUILD_CHECKED_DATASET/DISCARDED_CSV
+1_BUILD_CHECKED_DATASET/job_checks_launcher_cp
+*.csv
