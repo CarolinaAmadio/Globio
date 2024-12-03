@@ -9,7 +9,13 @@
 
 source /g100_work/OGS23_PRACE_IT/COPERNICUS/py_env_3.9.18/bin/activate
 
-python count_file_serial.py
+# 1 script che produce duefilse csv 
+# a) fies nc presenti nel float index ma non  presenti comd file *nc
+# b) *nc files non presenti nel float index
+python count_file_serial.py 
+
+# Conta i file con estensione .nc nelle sottocartelle
 sh count_files_downloaded.sh
 
+# file che riassume tutti i passggi nel avere un float index
 python final_check_count.py
