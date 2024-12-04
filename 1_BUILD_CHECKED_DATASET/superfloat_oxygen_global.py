@@ -47,7 +47,7 @@ from bitsea.basins.region import Rectangle
 import superfloat_generator
 from bitsea.commons.utils import addsep
 import os
-import scipy.io.netcdf as NC
+from scipy.io.netcdf import netcdf_file
 import numpy as np
 import seawater as sw
 from datetime import datetime, timedelta
@@ -86,7 +86,8 @@ def dump_oxygen_file(outfile, p, Pres, Value, Qc, metadata, mode='w'):
     if mode=='a':
         command = "cp %s %s.tmp" %(outfile,outfile)
         os.system(command)
-    ncOUT = NC.netcdf_file(outfile + ".tmp" ,mode)
+    ncOUT = netcdf_file(outfile + ".tmp", mode)
+
 
     if mode=='w': # if not existing file, we'll put header, TEMP, PSAL
         setattr(ncOUT, 'origin'     , 'coriolis')
@@ -270,12 +271,18 @@ for iFile in range(nFiles):
 
     if 'DOXY' in available_params.rsplit(" "):
         p=bio_float.profile_gen(lon, lat, float_time, filename, available_params,parameterdatamode)
+        p = pCor
         outfile = get_outfile(p,OUTDIR)
         writing_mode=superfloat_generator.writing_mode(outfile)
         metadata = Metadata(p._my_float.filename, p._my_float.status_var('DOXY'))
-        doxy_algorithm(p, outfile, metadata,writing_mode)
+        try:
+            with Dataset(f_serv_ca , mode='r') as nc_file:
+                doxy_algorithm(p, outfile, metadata,writing_mode)
+        except:
+            log_to_csv(filename, "corrupted_file", discarded_file)
     elif 'DOXY2' in available_params.rsplit(" "):
         p=bio_float.profile_gen(lon, lat, float_time, filename, available_params,parameterdatamode)
+        p = pCor
         outfile = get_outfile(p,OUTDIR)
         BOOL= check_units_doxy2(p,outfile)
         if BOOL:
