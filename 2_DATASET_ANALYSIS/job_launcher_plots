@@ -1,0 +1,32 @@
+#!/bin/bash
+
+#SBATCH --job-name=prov
+#SBATCH -N1
+#SBATCH --ntasks-per-node=24
+#SBATCH --time=04:50:00
+#SBATCH --account=OGS_devC
+#SBATCH --partition=g100_meteo_prod
+#SBATCH --qos=qos_meteo
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=camadio@ogs.it
+
+
+source /g100_work/OGS23_PRACE_IT/COPERNICUS/py_env_3.9.18/bin/activate
+export PYTHONPATH=$PYTHONPATH:/g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/SFILES_FINAL_v2/Globio_branch_SEANOE/1_BUILD_CHECKED_DATASET/bit.sea/src/
+. ./opa_profile.inc
+
+export ONLINE_REPO=/g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/
+export DATASET_NAME=SFILES_FINAL_v2_QCed
+
+#opa_prex "python Time_Series_1plot.py -s 20000101 -e 20241110 -v P_l"
+#opa_prex "python Time_Series_1plot.py -s 20000101 -e 20241110 -v O2o"
+#opa_prex "python Time_Series_1plot.py -s 20000101 -e 20241110 -v N3n"
+#opa_prex "python Time_Series_1plot.py -s 20000101 -e 20241110 -v pH"
+#opa_prex "python Time_Series_1plot.py -s 20000101 -e 20241110 -v PAR"
+opa_prex "python Time_Series_1plot.py -s 20000101 -e 20241110 -v POC"
+
+### fill input data inside the scripts
+opa_prex "pythonTime_Series_1plot.py"
+opa_prex "python1_plotbar_basin.py"
+opa_prex "python1_plot_map_mission_b_allvars.py"
+opa_prex "python2_table_distribution.py"
