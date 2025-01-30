@@ -73,7 +73,7 @@ def dumpfile(outfile, p,Pres,chl_profile,Qc,metadata):
     
     print("dumping chla on " + outfile + p.time.strftime(" %Y%m%d-%H:%M:%S"), flush=True)
     ncOUT = NC.netcdf_file(outfile,"w")
-    setattr(ncOUT, 'origin'     , 'coriolis')
+    setattr(ncOUT, 'origin'     , 'seanoe')
     setattr(ncOUT, 'file_origin', metadata.filename)
 
     ncOUT.createDimension("DATETIME",14)
@@ -125,8 +125,7 @@ def dumpfile(outfile, p,Pres,chl_profile,Qc,metadata):
     ncvar[:]=Qc
     ncOUT.close()
 
-def check_bgcvar_empty(outfile,VARNAME='CHLA' ):
-    coriolis_file=outfile.replace('SUPERFLOAT','CORIOLIS')
+def check_bgcvar_empty(coriolis_file ,VARNAME='CHLA' ):
     nc = Dataset(coriolis_file)
     VARLIST= [VARNAME + '_ADJUSTED',  VARNAME+ '_ADJUSTED_QC']
     listempty=[]
@@ -135,32 +134,26 @@ def check_bgcvar_empty(outfile,VARNAME='CHLA' ):
         if isinstance(serv, np.ma.MaskedArray):
            if np.all(np.ma.getdata(serv) == b'') or np.all(serv.mask):
               listempty.append(VAR)
-
            else:
               if np.all(serv == b''):
                  listempty.append(VAR)
-   
+           if np.all(serv == b"3"):
+              listempty.append(VAR) 
     return len(listempty)>0
-
 
 def treating_coriolis(pCor, outfile=None):
     metadata = Metadata(pCor._my_float.filename)
     metadata.status_var = pCor._my_float.status_var('CHLA')
     # only adjusted and delayed
     if pCor._my_float.status_var('CHLA') in ['A','D'] :    #istanza di BioFloat
-        
         if not outfile: # non do outfile as in bitsea
            Pres,CHL, Qc=pCor.read('CHLA', read_adjusted=True) #pCor istanza  do BioFloatProfile
            if len(Pres)<5: return None, None, None, metadata
            else: return Pres, CHL, Qc, metadata
-
         else:
-           coriolis_file=outfile.replace('SUPERFLOAT','CORIOLIS')
-           nc = Dataset(coriolis_file) 
-           EMPTY_VAR_CHECK=check_bgcvar_empty(outfile, 'CHLA' )
-
+           EMPTY_VAR_CHECK=check_bgcvar_empty(pCor._my_float.filename , 'CHLA' )
            if EMPTY_VAR_CHECK :
-              log_to_csv(filename, "var_is_empty", discarded_file)  
+              log_to_csv(filename, "var_is_empty_or_bad_qc", discarded_file)  
               return None, None, None, metadata
            else:
               Pres,CHL, Qc=pCor.read('CHLA', read_adjusted=True)
@@ -171,37 +164,39 @@ def treating_coriolis(pCor, outfile=None):
         log_to_csv(filename, "RT_Chla_not_used ", discarded_file)
         return None, None, None, metadata
 
-def chla_algorithm(pCor,outfile,CHECK_EMPTY_VALUES=True):
+def chla_algorithm(pCor,outfile):
     Pres, _, _ = pCor.read('TEMP', read_adjusted=False)
-    if len(Pres)<5:
+    if len(Pres)<5 or (Pres is None):
         print("few values in Coriolis TEMP in " + pCor._my_float.filename, flush=True)
         log_to_csv(filename, "len_pres_temp_less_5", discarded_file)
         return
     os.system('mkdir -p ' + os.path.dirname(outfile))
-    if CHECK_EMPTY_VALUES:     
-       Pres, CHL, Qc, metadata = treating_coriolis(pCor, outfile)
-    else:
-       Pres, CHL, Qc, metadata = treating_coriolis(pCor) 
+    Pres, CHL, Qc, metadata = treating_coriolis(pCor, outfile)
     
     if Pres is None: 
         log_to_csv(filename, "pres_none", discarded_file)
         return # no data
-    dumpfile(outfile, pCor, Pres, CHL, Qc, metadata)
-
+    elif len(Pres) <1:
+        log_to_csv(filename, "pres_doxy_none", discarded_file)
+    else:
+        dumpfile(outfile, pCor, Pres, CHL, Qc, metadata)
 
 # start program 
 # opa_prex "python superfloat_chla.py     -o $DATASET -u $UPDATE_FILE"
 # outdir      =  $ONLINE_REPO/SUPERFLOAT
-# update_file =  filtered_Float_Index.txt
+# update_file =  Float_Index.txt
 
 #DATASET=/g100_work/OGS_devC/camadio/GLOBIO/SUPERFLOAT/
 # ONLINE_REPO/CORIOLIS/$UPDATE_FILE --> Float_index.txt
-#python superfloat_chla_global.py     -o $DATASET -u $ONLINE_REPO/CORIOLIS/$UPDATE_FILE
+#opa_prex "python superfloat_chla_global.py     -o $ONLINE_REPO/$OUTDIR_HOME -u $ONLINE_REPO/$OPA_HOME/$UPDATE_FILE" # muove files ma usando il float index di "coriolis per muovere in superfloat"
 
 OUTDIR = addsep(args.outdir)
 input_file=args.update_file
 CHECK_EMPTY_VALUES=True
 discarded_file = "discarded_CHLA.csv" # file that will ist all files disvcarded and motivation 
+
+print(OUTDIR)
+print(input_file)
 
 #INDEX_FILE=superfloat_generator.read_float_update(input_file) # legge il file dando i caratteri int float etc
 INDEX_FILE=superfloat_generator.read_float_read_float_index(input_file) # legge il float index come numpy array di stringhe
@@ -230,7 +225,6 @@ for iFile in range(nFiles): # loop su tuttie le righe del float index
     filename         = INDEX_FILE['file_name'][iFile].decode()
     available_params = INDEX_FILE['parameters'][iFile].decode()
     parameterdatamode= INDEX_FILE['parameter_data_mode'][iFile].decode()
-    #float_time = datetime.datetime.strptime(timestr,'%Y%m%d%H%M%S')
     float_time = datetime.datetime.strptime(timestr, '%Y%m%d-%H:%M:%S')
     filename=filename.replace('coriolis/','').replace('profiles/','')
        
@@ -239,11 +233,11 @@ for iFile in range(nFiles): # loop su tuttie le righe del float index
         # profile_gen: (1) Crea un'istanza di BioFloat (2) Crea un'istanza di BioFloatProfile ma nn
         # ho correzioni (non ho ancora chiamato la pread
         outfile = get_outfile(pCor, OUTDIR) # mi rida il nome del file
-        f_serv_ca = pCor._my_float.filename
         try:
-            with Dataset(f_serv_ca , mode='r') as nc_file:
-               chla_algorithm(pCor, outfile)
+            with Dataset(pCor._my_float.filename , mode='r', format="NETCDF4") as nc_file:
+                 chla_algorithm(pCor, outfile)
         except:
+            print('problema')
             log_to_csv(filename, "corrupted_file", discarded_file)
     else:
         log_to_csv(filename, "No_chlorophyll_in_available_params", discarded_file)

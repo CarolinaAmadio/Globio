@@ -1,0 +1,33 @@
+
+
+1. creo il Float_Index.txt senza applicare alcun filtro ca 30 min of run
+
+
+
+
+2. cancel files with lat lon blanks and discard descending profiles
+
+
+
+
+3. append Data mode in the Float index in order to align dataset to CORIOLIS/ dataset structure
+and cp Float_Index_type_mode.txt Float_Index.txt
+
+
+
+
+Float_Index.txt created
+float index filtered of latlon blanks and descending profiles added datamode as DM
+discarded files not removed from the WMO directories
+
+
+
+
+5.    perform  checks to avoid having corrupted files or empty vars latlon temp sal
+
+
+
+
+6.   move discarded files in a directory called discarded
+PrEx Mon Jan 13 14:34:35 CET 2025    > python 3_lev_discard_NC_files.py -i /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/ -o /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/discarded/ -ifile /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/Discarded_PresTemp_noteq_PresSal.csv
+PrEx Mon Jan 13 14:34:43 CET 2025   0< python 3_lev_discard_NC_files.py -i /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/ -o /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/discarded/ -ifile /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/Discarded_PresTemp_noteq_PresSal.csv [ok]

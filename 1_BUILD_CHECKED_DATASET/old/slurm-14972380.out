@@ -1,0 +1,46 @@
+
+
+1. creo il Float_Index.txt senza applicare alcun filtro ca 30 min of run
+
+
+
+
+2. cancel files with lat lon blanks and discard descending profiles
+
+
+
+
+3. append Data mode in the Float index in order to align dataset to CORIOLIS/ dataset structure
+and cp Float_Index_type_mode.txt Float_Index.txt
+
+
+
+
+Float_Index.txt created
+float index filtered of latlon blanks and descending profiles added datamode as DM
+discarded files not removed from the WMO directories
+
+
+
+
+5.    perform  checks to avoid having corrupted files or empty vars latlon temp sal
+
+
+
+
+6.   move discarded files in a directory called discarded
+
+
+PrEx Fri Jan 17 12:27:48 CET 2025    > python 1_update_float_index_with_mode.py -i /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/Float_Index.txt -o /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/Float_Index.txt --data_type D
+PrEx Fri Jan 17 12:27:53 CET 2025   0< python 1_update_float_index_with_mode.py -i /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/Float_Index.txt -o /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/Float_Index.txt --data_type D [ok]
+SFILES_FINAL_v2/
+PrEx Fri Jan 17 12:27:53 CET 2025    > python superfloat_chla_global.py     -o /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2_QCed -u /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/Float_Index.txt
+few values in Coriolis TEMP in /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/SFILES_FINAL_v2/7900825/SR7900825_057.nc
+few values in Coriolis TEMP in /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/SFILES_FINAL_v2/5905167/SD5905167_435.nc
+few values in Coriolis TEMP in /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/SFILES_FINAL_v2/5903717/SD5903717_138.nc
+few values in Coriolis TEMP in /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/SFILES_FINAL_v2/5903717/SD5903717_140.nc
+few values in Coriolis TEMP in /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/SFILES_FINAL_v2/5903717/SD5903717_141.nc
+few values in Coriolis TEMP in /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/SFILES_FINAL_v2/5903717/SD5903717_142.nc
+few values in Coriolis TEMP in /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/SFILES_FINAL_v2/5903717/SD5903717_143.nc
+PrEx Fri Jan 17 13:20:19 CET 2025   0< python superfloat_chla_global.py     -o /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2_QCed -u /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/Float_Index.txt [ok]
+Fri Jan 17 13:20:19 CET 2025

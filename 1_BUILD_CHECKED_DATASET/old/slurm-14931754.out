@@ -1,0 +1,25 @@
+
+
+1. creo il Float_Index.txt senza applicare alcun filtro
+Thu Jan  9 12:07:17 CET 2025
+PrEx Thu Jan  9 12:07:17 CET 2025    > python 0_dump_index_init.py -i /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/ -o /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/Float_Index_0.txt -t superfloat
+Traceback (most recent call last):
+  File "/g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/SFILES_FINAL_v2/Globio_branch_SEANOE/1_BUILD_CHECKED_DATASET/0_dump_index_init.py", line 176, in <module>
+    line=file_header_content(filename,VARLIST,avail_params=None)
+  File "/g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/SFILES_FINAL_v2/Globio_branch_SEANOE/1_BUILD_CHECKED_DATASET/0_dump_index_init.py", line 107, in file_header_content
+    updated_df.to_csv("CSV/"  + filecsv)
+  File "/g100_work/OGS23_PRACE_IT/COPERNICUS/py_env_3.9.18/lib/python3.9/site-packages/pandas/core/generic.py", line 3902, in to_csv
+    return DataFrameRenderer(formatter).to_csv(
+  File "/g100_work/OGS23_PRACE_IT/COPERNICUS/py_env_3.9.18/lib/python3.9/site-packages/pandas/io/formats/format.py", line 1152, in to_csv
+    csv_formatter.save()
+  File "/g100_work/OGS23_PRACE_IT/COPERNICUS/py_env_3.9.18/lib/python3.9/site-packages/pandas/io/formats/csvs.py", line 247, in save
+    with get_handle(
+  File "/g100_work/OGS23_PRACE_IT/COPERNICUS/py_env_3.9.18/lib/python3.9/site-packages/pandas/io/common.py", line 739, in get_handle
+    check_parent_directory(str(handle))
+  File "/g100_work/OGS23_PRACE_IT/COPERNICUS/py_env_3.9.18/lib/python3.9/site-packages/pandas/io/common.py", line 604, in check_parent_directory
+    raise OSError(rf"Cannot save file into a non-existent directory: '{parent}'")
+OSError: Cannot save file into a non-existent directory: 'CSV'
+PrEx Thu Jan  9 12:08:58 CET 2025   1< python 0_dump_index_init.py -i /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/ -o /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/Float_Index_0.txt -t superfloat [KO]
+Thu Jan  9 12:08:58 CET 2025
+
+

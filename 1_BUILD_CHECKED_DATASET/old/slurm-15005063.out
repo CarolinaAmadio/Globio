@@ -1,0 +1,6 @@
+mkdir -p /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2_QCed_tmp_prova
+opa_prex python superfloat_chla_global.py     -o /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2_QCed_tmp_prova -u /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/Float_Index.txt
+Tue Jan 21 21:49:03 CET 2025
+Tue Jan 21 21:49:03 CET 2025
+Tue Jan 21 21:49:03 CET 2025
+Tue Jan 21 21:49:03 CET 2025

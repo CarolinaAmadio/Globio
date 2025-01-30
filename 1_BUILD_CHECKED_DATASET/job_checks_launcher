@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#SBATCH --job-name=checks
+#SBATCH --job-name=sauz
 #SBATCH -N1
-#SBATCH --ntasks-per-node=1
-#SBATCH --time=08:20:00
+#SBATCH --ntasks-per-node=12
+#SBATCH --time=04:50:00
 #SBATCH --mem=300gb
 #SBATCH --account=OGS_devC
 #SBATCH --partition=g100_meteo_prod
@@ -12,68 +12,126 @@
 #SBATCH --mail-user=camadio@ogs.it
 
 source /g100_work/OGS23_PRACE_IT/COPERNICUS/py_env_3.9.18/bin/activate
-export PYTHONPATH=$PYTHONPATH:/g100_work/OGS_devC/camadio/GLOBIO/Globio/1_BUILD_CHECKED_DATASET/bit.sea/src/
+export PYTHONPATH=$PYTHONPATH:/g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/SFILES_FINAL_v1/Globio/1_BUILD_CHECKED_DATASET/bit.sea/src
 . ./opa_profile.inc
 
-ONLINE_REPO=/g100_work/OGS_devC/camadio/GLOBIO/
+OPA_HOME=SFILES_FINAL_v2
+OUTDIR_HOME=SFILES_FINAL_v2_QCed
+ONLINE_REPO=/g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/
 export ONLINE_REPO
 UPDATE_FILE=Float_Index.txt
 
-# 1. perform 3 checks to avoid having corrupted files or empty vars
-# ca 1 hr each 100 000 files 
-date
-# questo lavora solo sul float index producendo un files di scartati:
-#Discarded_PresTemp_noteq_PresSal.csv
-# e togliendoli da floatdindex
-#opa_prex "python coriolis_discard_csv.py -o $ONLINE_REPO/CORIOLIS/ -i  $ONLINE_REPO/CORIOLIS/"
-mkdir -p $ONLINE_REPO/CORIOLIS/discarded/
-
-#zip -r $ONLINE_REPO/CORIOLIS.zip $ONLINE_REPO/CORIOLIS
-
-#opa_prex "python coriolis_discard_files.py -i $ONLINE_REPO/CORIOLIS/ -o  $ONLINE_REPO/CORIOLIS/discarded/ -ifile Discarded_PresTemp_noteq_PresSal.csv"
-#cp -r job_checks_launcher $ONLINE_REPO/CORIOLIS/discarded/ 
+#___________________________________________________________________________________________#
+# 1.     creo il Float_Index.txt senza applicare alcun filtro
+echo ""
+echo ""
+echo  1.    creo il Float_Index.txt senza applicare alcun filtro ca 30 min of run
 #date
+#opa_prex "python 0_dump_index_init.py -i $ONLINE_REPO/$OPA_HOME/ -o $ONLINE_REPO/$OPA_HOME/Float_Index_0.txt -t superfloat -ocsv $ONLINE_REPO/$OPA_HOME/BadPosition_latlon.csv"
+#date
+echo ""
+echo ""
+#___________________________________________________________________________________________#
+
+#___________________________________________________________________________________________#
+# 2. cancel files with lat lon blanks and discard descending profiles
+echo ""
+echo ""
+echo  2.   cancel files with lat lon blanks and discard descending profiles
+#grep -v ",," $ONLINE_REPO/$OPA_HOME/Float_Index_0.txt | grep -v D.nc > $ONLINE_REPO/$OPA_HOME/Float_Index_0_ascend_filtered.txt
+echo ""
+echo ""
+#___________________________________________________________________________________________#
+
+#___________________________________________________________________________________________#
+# 3. append Data mode in the Float index in order to align dataset to "CORIOLIS/" dataset structure
+echo ""
+echo ""
+echo 3. append Data mode in the Float index in order to align dataset to "CORIOLIS/" dataset structure
+#opa_prex "python 1_update_float_index_with_mode.py -i $ONLINE_REPO/$OPA_HOME/Float_Index_0_ascend_filtered.txt -o $ONLINE_REPO/$OPA_HOME/Float_Index.txt --data_type D"
+echo  and cp Float_Index_type_mode.txt Float_Index.txt
+echo ""
+echo ""
+
+#___________________________________________________________________________________________#
+
+echo ""
+echo ""
+echo "Float_Index.txt created"
+echo "float index filtered of latlon blanks and descending profiles added datamode as DM"
+echo "discarded files not removed from the WMO directories"
+echo ""
+echo ""
+
+#___________________________________________________________________________________________#
+# 5. perform  checks to avoid having corrupted files or empty vars ca 1 hr each 100 000 files 
+# questo lavora solo sul float index producendo un files di scartati:
+#date
+echo ""
+echo ""
+echo "5.    perform  checks to avoid having corrupted files or empty vars latlon temp sal"
+#opa_prex "python 2_lev_discard_csv.py -o $ONLINE_REPO/$OPA_HOME/ -i $ONLINE_REPO/$OPA_HOME/ -outfile $ONLINE_REPO/$OPA_HOME/Discarded_PresTemp_noteq_PresSal.csv"
+echo ""
+echo ""
+#date
+mkdir -p $ONLINE_REPO/$OPA_HOME/discarded1/
+mkdir -p $ONLINE_REPO/$OPA_HOME/discarded2/
+
+#___________________________________________________________________________________________#
+# 6. ora rimuovo i files dalla cartelle WMO/PROFILI in discarded
+#date
+echo ""
+echo ""
+echo "6.   move discarded files in a directory called discarded"
+#opa_prex "python 3_lev_discard_NC_files.py -i $ONLINE_REPO/$OPA_HOME/ -o $ONLINE_REPO/$OPA_HOME/discarded1/ -ifile $ONLINE_REPO/$OPA_HOME/Discarded_PresTemp_noteq_PresSal.csv"
+
+#opa_prex "python 3_lev_discard_NC_files.py -i $ONLINE_REPO/$OPA_HOME/ -o $ONLINE_REPO/$OPA_HOME/discarded2/ -ifile $ONLINE_REPO/$OPA_HOME/BadPosition_latlon.csv"
+
+#cp -r job_checks_launcher $ONLINE_REPO/$OPA_HOME/discarded/
+#cp -r $ONLINE_REPO/$OPA_HOME/discarded/Discarded_PresTemp_noteq_PresSal.csv $ONLINE_REPO/$OPA_HOME/discarded/
+#cp -r $ONLINE_REPO/$OPA_HOME/diff.txt $ONLINE_REPO/$OPA_HOME/discarded/
+#date
+echo ""
+echo ""
+
 # controlla ora che il numero di files torni tra float_index0.txt = float_index.txt  + Discarded_PresTemp_noteq_PresSal.csv drop duplicates
+#5 ora che ho spostato i files non utili faccio il float index
 
-##################################################################################################
-# manage the outputs *txt and * csv in CORIOLIS dir
-##################################################################################################
-# 1.a all txt files saved in a bkp directory called yyyymmdd
-CURRENT_DATE=$(date +%Y%m%d)
-ODIR=$ONLINE_REPO/CORIOLIS/job_${CURRENT_DATE}_backup
-# 1b verify if dir exitsts and eventally add (A...z  )
-suffix=""
-letter="A"
-while [[ -d $ODIR$suffix ]]; do
-    suffix="_$letter"
-    letter=$(echo "$letter" | tr "A-Y" "B-Z")
-done
 
-ODIR=$ODIR$suffix
-mkdir -p $ODIR
-# save all txt in the directory
-mv $ONLINE_REPO/CORIOLIS/*_partial_cleaned*txt $ODIR
-mv $ONLINE_REPO/CORIOLIS/*txt_2bkp $ODIR
-mv $ONLINE_REPO/CORIOLIS/*csv $ODIR
-cp -r $ONLINE_REPO/CORIOLIS/*.txt $ODIR
-date
+#cp $ONLINE_REPO/$OPA_HOME/Float_Index.txt $ONLINE_REPO/$OPA_HOME/Float_Index_step3.txt
+#opa_prex "python dump_index.py -i $ONLINE_REPO/$OPA_HOME -o $ONLINE_REPO/$OPA_HOME/Float_Index.txt -t superfloat"
+#
 ##################################################################################################
-# end 
 ##################################################################################################
 
 # 2. perform basic checks  
-DATASET=/g100_work/OGS_devC/camadio/GLOBIO/SUPERFLOAT/
-mkdir -p $DATASET
-#opa_prex "python superfloat_chla_global.py     -o $DATASET -u $ONLINE_REPO/CORIOLIS/$UPDATE_FILE"
+#### metti data mode 
+#opa_prex "python 1_update_float_index_with_mode.py -i $ONLINE_REPO/$OPA_HOME/Float_Index.txt -o $ONLINE_REPO/$OPA_HOME/Float_Index.txt --data_type D"
+
+
+CORIOLIS_DIR=$OPA_HOME/
+export CORIOLIS_DIR
+
+#tar -czvf SFILES_FINAL_v2_QCed_chla_only.tar.gz -C /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/SFILES_FINAL_v2_QCed
+#tar -czvf SFILES_FINAL_v2_QCed_chla_oxy.tar.gz -C /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/ SFILES_FINAL_v2_QCed
+#tar -czvf SFILES_FINAL_v2_QCed_chla_oxy_nit.tar.gz -C /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/ SFILES_FINAL_v2_QCed
+
+
+mkdir -p $ONLINE_REPO/$OUTDIR_HOME
+date
+#opa_prex "python superfloat_chla_global.py     -o $ONLINE_REPO/$OUTDIR_HOME -u $ONLINE_REPO/$OPA_HOME/$UPDATE_FILE" # muove files ma usando il float index di "coriolis per muovere in superfloat"
 date
 
-opa_prex "python superfloat_oxygen_global.py   -o $DATASET -u $ONLINE_REPO/CORIOLIS/$UPDATE_FILE"
-opa_prex "python superfloat_nitrate_global.py  -o $DATASET -u $ONLINE_REPO/CORIOLIS/$UPDATE_FILE"
-exit 0
-opa_prex "python superfloat_par_global.py      -o $DATASET -u $ONLINE_REPO/CORIOLIS/$UPDATE_FILE"
-opa_prex "python superfloat_bbp700_global.py   -o $DATASET -u $ONLINE_REPO/CORIOLIS/$UPDATE_FILE"
-opa_prex "python superfloat_ph_global.py       -o $DATASET -u $ONLINE_REPO/CORIOLIS/$UPDATE_FILE"
+#opa_prex "python superfloat_oxygen_global.py -o $ONLINE_REPO/$OUTDIR_HOME -u $ONLINE_REPO/$OPA_HOME/$UPDATE_FILE"
+#opa_prex "python superfloat_nitrate_global.py  -o $ONLINE_REPO/$OUTDIR_HOME -u $ONLINE_REPO/$OPA_HOME/$UPDATE_FILE"
+date
+#opa_prex "python superfloat_par_global.py      -o $ONLINE_REPO/$OUTDIR_HOME -u $ONLINE_REPO/$OPA_HOME/$UPDATE_FILE"
+date
+opa_prex "python superfloat_bbp700_global.py   -o $ONLINE_REPO/$OUTDIR_HOME -u $ONLINE_REPO/$OPA_HOME/$UPDATE_FILE"
+date
+opa_prex "python superfloat_ph_global.py       -o $ONLINE_REPO/$OUTDIR_HOME -u $ONLINE_REPO/$OPA_HOME/$UPDATE_FILE"
 #date
 # 3. write the float index
-opa_prex "python dump_index.py -i $DATASET -o $DATASET/Float_Index.txt -t superfloat"
+#exit 0
+opa_prex "python dump_index.py -i $ONLINE_REPO/$OUTDIR_HOME -o $ONLINE_REPO/$OUTDIR_HOME/Float_Index.txt -t superfloat"
 date

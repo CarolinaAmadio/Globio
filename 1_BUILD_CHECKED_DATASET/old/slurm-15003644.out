@@ -1,0 +1,41 @@
+
+
+1. creo il Float_Index.txt senza applicare alcun filtro ca 30 min of run
+
+
+
+
+2. cancel files with lat lon blanks and discard descending profiles
+
+
+
+
+3. append Data mode in the Float index in order to align dataset to CORIOLIS/ dataset structure
+and cp Float_Index_type_mode.txt Float_Index.txt
+
+
+
+
+Float_Index.txt created
+float index filtered of latlon blanks and descending profiles added datamode as DM
+discarded files not removed from the WMO directories
+
+
+
+
+5.    perform  checks to avoid having corrupted files or empty vars latlon temp sal
+
+
+
+
+6.   move discarded files in a directory called discarded
+
+
+/var/spool/slurmd/job15003644/slurm_script: line 120: SFILES_FINAL_v2/: No such file or directory
+Tue Jan 21 15:31:05 CET 2025
+Tue Jan 21 15:31:05 CET 2025
+Tue Jan 21 15:31:05 CET 2025
+Tue Jan 21 15:31:05 CET 2025
+PrEx Tue Jan 21 15:31:05 CET 2025    > python dump_index.py -i /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2_QCed -o /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2_QCed/Float_Index.txt -t superfloat
+PrEx Tue Jan 21 15:51:03 CET 2025   0< python dump_index.py -i /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2_QCed -o /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2_QCed/Float_Index.txt -t superfloat [ok]
+Tue Jan 21 15:51:03 CET 2025

@@ -54,8 +54,7 @@ class Metadata():
         self.filename = filename
         self.status_var = 'n'
 
-def check_bgcvar_empty(outfile,VARNAME='DOWNWELLING_PAR' ):
-    coriolis_file=outfile.replace('SUPERFLOAT','CORIOLIS')
+def check_bgcvar_empty(coriolis_file, VARNAME='DOWNWELLING_PAR' ):
     nc = Dataset(coriolis_file)
     VARLIST= [VARNAME + '_ADJUSTED',  VARNAME+ '_ADJUSTED_QC']
     listempty=[]
@@ -67,6 +66,8 @@ def check_bgcvar_empty(outfile,VARNAME='DOWNWELLING_PAR' ):
            else:
               if np.all(serv == b''):
                  listempty.append(VAR)
+           if np.all(serv == b"3"):
+               listempty.append(VAR)
     return len(listempty)>0
 
 def dump_par_file(outfile, p, Pres, Value, Qc, metadata, mode='w'):
@@ -146,9 +147,9 @@ def par_algorithm(pCor, outfile, metadata,writing_mode):
         return
     os.system('mkdir -p ' + os.path.dirname(outfile))
 
-    EMPTY_VAR_CHECK=check_bgcvar_empty(outfile,'DOWNWELLING_PAR')
+    EMPTY_VAR_CHECK=check_bgcvar_empty(pCor._my_float.filename,'DOWNWELLING_PAR')
     if EMPTY_VAR_CHECK :
-        log_to_csv(filename, "var_is_empty", discarded_file)
+        log_to_csv(filename, "var_is_empty_or_bad_qc", discarded_file)
         return None, None, None, metadata
     else:
         metadata.status_var = pCor._my_float.status_var('DOWNWELLING_PAR')
@@ -204,10 +205,8 @@ for iFile in range(nFiles):
          outfile = get_outfile(pCor,OUTDIR)
          writing_mode=superfloat_generator.writing_mode(outfile)
          metadata = Metadata(pCor._my_float.filename)
-         f_serv_ca = pCor._my_float.filename
          try:
-            print(f_serv_ca) 
-            with Dataset(f_serv_ca , mode='r') as nc_file:
+            with Dataset(pCor._my_float.filename, mode='r', format="NETCDF4") as nc_file:
                  par_algorithm(pCor, outfile, metadata, writing_mode)
          except:
             log_to_csv(filename, "corrupted_file", discarded_file) 

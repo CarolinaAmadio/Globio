@@ -47,14 +47,14 @@ from bitsea.basins.region import Rectangle
 import superfloat_generator
 from bitsea.commons.utils import addsep
 import os
-from scipy.io.netcdf import netcdf_file
+#from scipy.io.netcdf import netcdf_file
+import scipy.io as NC
 import numpy as np
 import seawater as sw
 from datetime import datetime, timedelta
 import bitsea.basins.OGS as OGS
 from bitsea.instruments.var_conversions import FLOATVARS
 from netCDF4 import Dataset
-#from commons_local import cross_Med_basins, save_report
 
 
 class Metadata():
@@ -62,8 +62,13 @@ class Metadata():
         self.filename = filename
         self.status_var = status_var
 
+def get_outfile(p,outdir):
+    wmo=p._my_float.wmo
+    filename="%s%s/%s" %(outdir,wmo, os.path.basename(p._my_float.filename))
+    return filename
+
 def check_units_doxy2(p,outfile):
-    coriolis_file=outfile.replace('SUPERFLOAT','CORIOLIS')
+    coriolis_file=p._my_float.filename
     nc = Dataset(coriolis_file)
     doxy_var = nc.variables['DOXY2']
     doxy_units = doxy_var.units
@@ -86,11 +91,10 @@ def dump_oxygen_file(outfile, p, Pres, Value, Qc, metadata, mode='w'):
     if mode=='a':
         command = "cp %s %s.tmp" %(outfile,outfile)
         os.system(command)
-    ncOUT = netcdf_file(outfile + ".tmp", mode)
-
+    ncOUT = NC.netcdf_file(outfile + ".tmp", mode)
 
     if mode=='w': # if not existing file, we'll put header, TEMP, PSAL
-        setattr(ncOUT, 'origin'     , 'coriolis')
+        setattr(ncOUT, 'origin'     , 'seanoe')
         setattr(ncOUT, 'file_origin', metadata.filename)
         PresT, Temp, QcT = p.read('TEMP', read_adjusted=False)
         PresT, Sali, QcS = p.read('PSAL', read_adjusted=False)
@@ -108,8 +112,6 @@ def dump_oxygen_file(outfile, p, Pres, Value, Qc, metadata, mode='w'):
         ncvar=ncOUT.createVariable("LATITUDE", "d", ("NPROF",))
         ncvar[:] = p.lat.astype(np.float64)
 
-
- 
         ncvar=ncOUT.createVariable('TEMP','f',('nTEMP',))
         ncvar[:]=Temp
         setattr(ncvar, 'variable'   , 'TEMP')
@@ -135,26 +137,16 @@ def dump_oxygen_file(outfile, p, Pres, Value, Qc, metadata, mode='w'):
     ncvar[:]=Pres
     ncvar=ncOUT.createVariable("DOXY", 'f', ('nDOXY',))
     ncvar[:]=Value
-    #if not doxy_already_existing:
     setattr(ncvar, 'status_var' , metadata.status_var)
-    #setattr(ncvar, 'drift_code' , metadata.drift_code)
-    #setattr(ncvar, 'offset'     , metadata.offset)
     setattr(ncvar, 'variable'   , 'DOXY')
     setattr(ncvar, 'units'      , "mmol/m3")
     ncvar=ncOUT.createVariable("DOXY_QC", 'f', ('nDOXY',))
     ncvar[:]=Qc
     ncOUT.close()
-
     os.system("mv " + outfile + ".tmp " + outfile)
 
 
-def get_outfile(p,outdir):
-    wmo=p._my_float.wmo
-    filename="%s%s/%s" %(outdir,wmo, os.path.basename(p._my_float.filename))
-    return filename
-
-def check_bgcvar_empty(outfile,VARNAME='DOXY' ):
-    coriolis_file=outfile.replace('SUPERFLOAT','CORIOLIS')
+def check_bgcvar_empty(coriolis_file ,VARNAME='DOXY' ):
     nc = Dataset(coriolis_file)
     VARLIST= [VARNAME + '_ADJUSTED',  VARNAME+ '_ADJUSTED_QC']
     listempty=[]
@@ -166,6 +158,8 @@ def check_bgcvar_empty(outfile,VARNAME='DOXY' ):
            else:
               if np.all(serv == b''):
                  listempty.append(VAR)
+           if np.all(serv == b"3"):
+                 listempty.append(VAR)      
     return len(listempty)>0
 
 def read_doxy(pCor):
@@ -187,20 +181,16 @@ def treating_coriolis(pCor, outfile=None):
         print( available_params.rsplit(" "))
         log_to_csv(filename, "no_doxy_params", discarded_file)
         raise ValueError("no doxy in the profile")
-
     metadata = Metadata(pCor._my_float.filename, pCor._my_float.status_var(NAMEVAR))
     metadata.status_var = pCor._my_float.status_var(NAMEVAR)
-    # only adjusted and delayed
-    if pCor._my_float.status_var(NAMEVAR) in ['A','D'] :    #istanza di BioFloat
-        if not outfile: # non do la stringa di outfile come  in bitsea originale
+    if pCor._my_float.status_var(NAMEVAR) in ['A','D'] :
+        if not outfile: 
            Pres, DOXY, Qc = read_doxy(pCor)
            return Pres, DOXY, Qc, metadata
         else:
-           coriolis_file=outfile.replace('SUPERFLOAT','CORIOLIS')
-           nc = Dataset(coriolis_file)
-           EMPTY_VAR_CHECK=check_bgcvar_empty(outfile, NAMEVAR )
+           EMPTY_VAR_CHECK=check_bgcvar_empty(pCor._my_float.filename , NAMEVAR )
            if EMPTY_VAR_CHECK :
-               log_to_csv(filename, "var_is_empty", discarded_file)
+               log_to_csv(filename, "var_is_empty_or_bad_qc", discarded_file)
                return None, None, None, metadata
            else:
                Pres, DOXY , Qc=pCor.read('DOXY', read_adjusted=True)
@@ -212,34 +202,30 @@ def treating_coriolis(pCor, outfile=None):
        return None, None, None, metadata
 
 def doxy_algorithm(p, outfile, metadata,writing_mode):
-    '''
-    Arguments:
-    * p                * profile object
-    * Profilelist_hist * List of profile object, provided by load_history()
-    * Dataset          * dictionary, provided by load_history()
-    '''
     Pres, _, _ = p.read('TEMP', read_adjusted=False)
     if len(Pres)<5 or (Pres is None):
         print("few values in Coriolis TEMP in " + p._my_float.filename, flush=True)
         log_to_csv(filename, "len_pres_temp_less_5", discarded_file)
         return
-    
     os.system('mkdir -p ' + os.path.dirname(outfile))
-    if CHECK_EMPTY_VALUES:
-        Pres, DOXY, Qc, metadata = treating_coriolis(p, outfile)
-    else:    
-        Pres, DOXY, Qc, metadata = treating_coriolis(p)
+    Pres, DOXY, Qc, metadata = treating_coriolis(p, outfile)
+    
+    # se ho la DOXY_Pres allora scrivo la variabile nel netcdf
     if Pres is None: 
         log_to_csv(filename, "pres_none", discarded_file)
         return # no data
-    dump_oxygen_file(outfile, p, Pres, DOXY, Qc, metadata,mode=writing_mode )
+    elif len(Pres) <1:
+        log_to_csv(filename, "pres_doxy_none", discarded_file)
+    else: 
+        dump_oxygen_file(outfile, p, Pres, DOXY, Qc, metadata,mode=writing_mode )
 
 OUTDIR = addsep(args.outdir)
 input_file=args.update_file
-CHECK_EMPTY_VALUES=True
 INDEX_FILE=superfloat_generator.read_float_read_float_index(input_file)
 nFiles=INDEX_FILE.size
 discarded_file = "discarded_DOXY.csv" # file that will ist all files disvcarded and motivation
+
+import sys
 
 def log_to_csv(file_name, motivation_text, discarded_file):
     """
@@ -265,34 +251,38 @@ for iFile in range(nFiles):
     filename         = INDEX_FILE['file_name'][iFile].decode()
     available_params = INDEX_FILE['parameters'][iFile].decode()
     parameterdatamode= INDEX_FILE['parameter_data_mode'][iFile].decode()
-    #float_time = datetime.strptime(timestr,'%Y%m%d%H%M%S')
     float_time = datetime.strptime(timestr, '%Y%m%d-%H:%M:%S')
     filename=filename.replace('coriolis/','').replace('profiles/','')
 
     if 'DOXY' in available_params.rsplit(" "):
         p=bio_float.profile_gen(lon, lat, float_time, filename, available_params,parameterdatamode)
-        p = pCor
         outfile = get_outfile(p,OUTDIR)
         writing_mode=superfloat_generator.writing_mode(outfile)
         metadata = Metadata(p._my_float.filename, p._my_float.status_var('DOXY'))
+        #f_serv_ca = p._my_float.filename
         try:
-            with Dataset(f_serv_ca , mode='r') as nc_file:
+            #print('start')
+            with Dataset(p._my_float.filename , mode='r', format="NETCDF4") as nc_file:
                 doxy_algorithm(p, outfile, metadata,writing_mode)
+                #print('ok end')
         except:
+            #print('problema')
             log_to_csv(filename, "corrupted_file", discarded_file)
     elif 'DOXY2' in available_params.rsplit(" "):
         p=bio_float.profile_gen(lon, lat, float_time, filename, available_params,parameterdatamode)
-        p = pCor
+        f_serv_ca = p._my_float.filename
         outfile = get_outfile(p,OUTDIR)
         BOOL= check_units_doxy2(p,outfile)
         if BOOL:
            writing_mode=superfloat_generator.writing_mode(outfile)
            metadata = Metadata(p._my_float.filename, p._my_float.status_var('DOXY2'))
-           f_serv_ca = pCor._my_float.filename
            try:
-               with Dataset(f_serv_ca , mode='r') as nc_file:
+               #print('start')
+               with Dataset(p._my_float.filename, mode='r', format="NETCDF4") as nc_file:
                    doxy_algorithm(p, outfile, metadata,writing_mode)
+                   # print('ok end')
            except:
+               #print('problema')
                log_to_csv(filename, "corrupted_file", discarded_file)
         else:
            log_to_csv(filename, "units_doxy_no_micromole/kg", discarded_file) 

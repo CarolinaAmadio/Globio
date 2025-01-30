@@ -1,0 +1,10 @@
+mkdir -p /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2_QCed_tmp_prova
+PrEx Tue Jan 21 21:52:33 CET 2025    > python superfloat_chla_global.py     -o /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2_QCed_tmp_prova -u /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/Float_Index.txt
+/g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2_QCed_tmp_prova/
+/g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/Float_Index.txt
+dumping chla on /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2_QCed_tmp_prova/2902296/SR2902296_126.nc 20230729-09:54:37
+PrEx Tue Jan 21 21:52:35 CET 2025   0< python superfloat_chla_global.py     -o /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2_QCed_tmp_prova -u /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/Float_Index.txt [ok]
+Tue Jan 21 21:52:35 CET 2025
+Tue Jan 21 21:52:35 CET 2025
+Tue Jan 21 21:52:35 CET 2025
+Tue Jan 21 21:52:35 CET 2025

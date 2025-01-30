@@ -1,0 +1,46 @@
+
+
+1. creo il Float_Index.txt senza applicare alcun filtro ca 30 min of run
+
+
+
+
+2. cancel files with lat lon blanks and discard descending profiles
+
+
+
+
+3. append Data mode in the Float index in order to align dataset to CORIOLIS/ dataset structure
+and cp Float_Index_type_mode.txt Float_Index.txt
+
+
+
+
+Float_Index.txt created
+float index filtered of latlon blanks and descending profiles added datamode as DM
+discarded files not removed from the WMO directories
+
+
+
+
+5.    perform  checks to avoid having corrupted files or empty vars latlon temp sal
+
+
+
+
+6.   move discarded files in a directory called discarded
+
+
+PrEx Fri Jan 17 12:04:26 CET 2025    > python superfloat_chla_global.py     -o /g100_work/OGS_devC/camadio/GLOBIO/SFILES_FINAL_v2_QCed -u /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/Float_Index.txt
+Traceback (most recent call last):
+  File "/g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/SFILES_FINAL_v2/Globio_branch_SEANOE/1_BUILD_CHECKED_DATASET/superfloat_chla_global.py", line 48, in <module>
+    from bitsea.instruments import bio_float
+  File "/g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/SFILES_FINAL_v1/Globio/1_BUILD_CHECKED_DATASET/bit.sea/src/bitsea/instruments/bio_float.py", line 30, in <module>
+    INDEX_FILE=np.loadtxt(FloatIndexer,dtype=mydtype, delimiter=",",ndmin=1)
+  File "/g100_work/OGS23_PRACE_IT/COPERNICUS/py_env_3.9.18/lib/python3.9/site-packages/numpy/lib/npyio.py", line 1373, in loadtxt
+    arr = _read(fname, dtype=dtype, comment=comment, delimiter=delimiter,
+  File "/g100_work/OGS23_PRACE_IT/COPERNICUS/py_env_3.9.18/lib/python3.9/site-packages/numpy/lib/npyio.py", line 1016, in _read
+    arr = _load_from_filelike(
+ValueError: the dtype passed requires 6 columns but 5 were found at row 1; use `usecols` to select a subset and avoid this error
+PrEx Fri Jan 17 12:05:12 CET 2025   1< python superfloat_chla_global.py     -o /g100_work/OGS_devC/camadio/GLOBIO/SFILES_FINAL_v2_QCed -u /g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ//SFILES_FINAL_v2/Float_Index.txt [KO]
+Fri Jan 17 12:05:12 CET 2025

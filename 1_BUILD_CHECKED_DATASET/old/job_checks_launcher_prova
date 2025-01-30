@@ -1,0 +1,45 @@
+#!/bin/bash
+
+#SBATCH --job-name=sauz
+#SBATCH -N1
+#SBATCH --ntasks-per-node=12
+#SBATCH --time=00:15:00
+#SBATCH --mem=300gb
+#SBATCH --account=OGS_devC
+#SBATCH --partition=g100_meteo_prod
+#SBATCH --qos=qos_meteo
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=camadio@ogs.it
+
+source /g100_work/OGS23_PRACE_IT/COPERNICUS/py_env_3.9.18/bin/activate
+export PYTHONPATH=$PYTHONPATH:/g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/SFILES_FINAL_v1/Globio/1_BUILD_CHECKED_DATASET/bit.sea/src
+. ./opa_profile.inc
+
+OPA_HOME=SFILES_FINAL_v2
+OUTDIR_HOME=SFILES_FINAL_v2_QCed_tmp_prova
+ONLINE_REPO=/g100_work/OGS_devC/camadio/GLOBIO/SEANOE_SAUZ/
+export ONLINE_REPO
+UPDATE_FILE=Float_Index.txt
+
+
+CORIOLIS_DIR=$OPA_HOME/
+export CORIOLIS_DIR
+
+
+echo mkdir -p $ONLINE_REPO/$OUTDIR_HOME
+
+opa_prex "python superfloat_chla_global.py     -o $ONLINE_REPO/$OUTDIR_HOME -u $ONLINE_REPO/$OPA_HOME/$UPDATE_FILE" # muove files ma usando il float index di "coriolis per muovere in superfloat"
+date
+#opa_prex "python superfloat_oxygen_global.py -o $ONLINE_REPO/$OUTDIR_HOME -u $ONLINE_REPO/$OPA_HOME/$UPDATE_FILE"
+#opa_prex "python superfloat_nitrate_global.py  -o $ONLINE_REPO/$OUTDIR_HOME -u $ONLINE_REPO/$OPA_HOME/$UPDATE_FILE"
+date
+#opa_prex "python superfloat_par_global.py      -o $ONLINE_REPO/$OUTDIR_HOME -u $ONLINE_REPO/$OPA_HOME/$UPDATE_FILE"
+date
+#opa_prex "python superfloat_bbp700_global.py   -o $ONLINE_REPO/$OUTDIR_HOME -u $ONLINE_REPO/$OPA_HOME/$UPDATE_FILE"
+date
+#opa_prex "python superfloat_ph_global.py       -o $ONLINE_REPO/$OUTDIR_HOME -u $ONLINE_REPO/$OPA_HOME/$UPDATE_FILE"
+#date
+# 3. write the float index
+#exit 0
+#opa_prex "python dump_index.py -i $ONLINE_REPO/$OUTDIR_HOME -o $ONLINE_REPO/$OUTDIR_HOME/Float_Index.txt -t superfloat"
+#date

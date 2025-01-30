@@ -55,8 +55,7 @@ class Metadata():
         self.filename = filename
         self.status_var = 'n'
 
-def check_bgcvar_empty(outfile,VARNAME='PH_IN_SITU_TOTAL' ):
-    coriolis_file=outfile.replace('SUPERFLOAT','CORIOLIS')
+def check_bgcvar_empty(coriolis_file ,VARNAME='PH_IN_SITU_TOTAL' ):
     nc = Dataset(coriolis_file)
     VARLIST= [VARNAME + '_ADJUSTED',  VARNAME+ '_ADJUSTED_QC']
     listempty=[]
@@ -68,6 +67,8 @@ def check_bgcvar_empty(outfile,VARNAME='PH_IN_SITU_TOTAL' ):
            else:
               if np.all(serv == b''):
                  listempty.append(VAR)
+           if np.all(serv == b"3"):
+               listempty.append(VAR)
     return len(listempty)>0
 
 def dump_ph_file(outfile, p, Pres, Value, Qc, metadata, mode='w'):
@@ -147,9 +148,9 @@ def ph_algorithm(pCor, outfile, metadata,writing_mode):
     os.system('mkdir -p ' + os.path.dirname(outfile))
     metadata.status_var = pCor._my_float.status_var('PH_IN_SITU_TOTAL')
 
-    EMPTY_VAR_CHECK=check_bgcvar_empty(outfile,'PH_IN_SITU_TOTAL')
+    EMPTY_VAR_CHECK=check_bgcvar_empty(pCor._my_float.filename,'PH_IN_SITU_TOTAL')
     if EMPTY_VAR_CHECK :
-        log_to_csv(filename, "var_is_empty", discarded_file)
+        log_to_csv(filename, "var_is_empty_or_bad_qc", discarded_file)
         return None, None, None, metadata
     else:
         if metadata.status_var in ['A', 'D']:
@@ -206,12 +207,11 @@ for iFile in range(nFiles):
          writing_mode=superfloat_generator.writing_mode(outfile)
 
          metadata = Metadata(pCor._my_float.filename)
-         f_serv_ca = pCor._my_float.filename
          try:
-            with Dataset(f_serv_ca , mode='r') as nc_file:
+            with Dataset(pCor._my_float.filename , mode='r', format="NETCDF4") as nc_file:
                 ph_algorithm(pCor, outfile, metadata, writing_mode)
          except:
             log_to_csv(filename, "corrupted_file", discarded_file) 
     else:
-         log_to_csv(filename, "No_downwelling_ph_in_available_params", discarded_file)
+         log_to_csv(filename, "No_ph_in_available_params", discarded_file)
 
