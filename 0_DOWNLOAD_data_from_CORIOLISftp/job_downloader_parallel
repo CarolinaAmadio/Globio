@@ -4,10 +4,10 @@
 #SBATCH -N 1 
 #SBATCH --ntasks-per-node=4 
 #SBATCH --time=4:00:00
-#SBATCH --account=OGS23_PRACE_IT
-#SBATCH --partition=g100_all_serial
+#SBATCH --account=OGS23_PRACE_IT_0
+#SBATCH --partition=dcgp_usr_prod
 
-BASEDIR=/g100_work/OGS_devC/camadio/GLOBIO/
+BASEDIR=/leonardo_scratch/large/userexternal/camadio0/GLOBIO/
 
 HOST=ftp.ifremer.fr
 USER=anonymous
@@ -15,7 +15,7 @@ REMOTEDIR=/ifremer/argo/
 LOCALDIR=$BASEDIR/CORIOLIS/download/tmp
 
 INDEXER_CORIOLIS=$BASEDIR/CORIOLIS/download/Global_floats.txt
-NAMEINDEXFILE=$BASEDIR/argo_synthetic-profile_index.txt
+NAMEINDEXFILE=argo_synthetic-profile_index.txt
 
 mkdir -p $BASEDIR/CORIOLIS $BASEDIR/CORIOLIS/download/ $LOCALDIR
 # ssh login10
@@ -26,7 +26,7 @@ if [ -f $NAMEINDEXFILE ] ; then
 fi
 
 # 1. Downloading of file --> argo_synthetic-profile_index.txt
-wget https://data-argo.ifremer.fr/$NAMEINDEXFILE   
+wget https://data-argo.ifremer.fr/$NAMEINDEXFILE  
 # 2. cancel files with lat lon blanks and discard descending profiles 
 grep -v ",," $NAMEINDEXFILE | grep -v D.nc > $BASEDIR/argo_synthetic-profile_index_CORR.txt
 
@@ -47,6 +47,7 @@ export REMOTEDIR=$REMOTEDIR
 export HOST=$HOST
 export USER=$USER 
 export LOCALDIR=$LOCALDIR
+
 
 # 4. downloading of the data 
 awk -F, '{print $1}' "$INDEXER_CORIOLIS" | xargs -P12 -I {} bash -c '
