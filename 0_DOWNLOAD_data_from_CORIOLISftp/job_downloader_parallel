@@ -4,10 +4,10 @@
 #SBATCH -N 1 
 #SBATCH --ntasks-per-node=4 
 #SBATCH --time=4:00:00
-#SBATCH --account=OGS23_PRACE_IT_0
-#SBATCH --partition=dcgp_usr_prod
+#SBATCH --account=OGS23_PRACE_IT
+#SBATCH --partition=g100_all_serial
 
-BASEDIR=/leonardo_scratch/large/userexternal/camadio0/GLOBIO/
+BASEDIR=/g100_work/OGS_devC/camadio/GLOBIO/
 
 HOST=ftp.ifremer.fr
 USER=anonymous
@@ -25,11 +25,12 @@ if [ -f $NAMEINDEXFILE ] ; then
     rm $NAMEINDEXFILE
 fi
 
-# 1. Downloading of file --> argo_synthetic-profile_index.txt
+# 1. Downloading of file in current directory --> argo_synthetic-profile_index.txt
 wget https://data-argo.ifremer.fr/$NAMEINDEXFILE  
 # 2. cancel files with lat lon blanks and discard descending profiles 
 grep -v ",," $NAMEINDEXFILE | grep -v D.nc > $BASEDIR/argo_synthetic-profile_index_CORR.txt
 
+#g100
 source /g100_work/OGS23_PRACE_IT/COPERNICUS/py_env_3.9.18/bin/activate
 
 if [ -f $INDEXER_CORIOLIS ] ; then
@@ -39,6 +40,11 @@ fi
 # 3. arrange file argo_synthetic-profile_index_CORR.txt removing header
 # outupt --> download/Global_floats.txt
 python argo_reader_modified.py -i $BASEDIR/argo_synthetic-profile_index_CORR.txt -o $INDEXER_CORIOLIS
+
+#ONLY 1 YEAR= 2025
+mv "$INDEXER_CORIOLIS" "${INDEXER_CORIOLIS}_v0"
+grep ',2025' "${INDEXER_CORIOLIS}_v0" > "$INDEXER_CORIOLIS"
+
 
 export PATH=$PATH:/g100_work/OGS23_PRACE_IT/COPERNICUS/bin
 REMOTEDIR=/ifremer/argo/dac/
