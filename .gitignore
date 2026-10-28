@@ -2,7 +2,7 @@
 *.txt
 
 # dataset
-SUPEFLOAT
+SUPERFLOAT
 
 # output dir of the downloader script 
 CORIOLIS/
