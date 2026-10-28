@@ -1,4 +1,25 @@
+import argparse
 from pathlib import Path
+
+def argument():
+    parser = argparse.ArgumentParser(
+        description='''
+    Downloads BGC-Argo profiles using argopy for a predefined region
+    and time period, and exports each profile to an individual NetCDF file.
+
+    The script retrieves DOXY, TEMP and PSAL data in standard mode
+    (as defined by argopy) and converts dissolved oxygen from µmol/kg
+    to mmol/m3 using TEOS-10 seawater density calculations.
+
+    Output: one NetCDF file per profile.
+    ''',
+        formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('--outdir', '-o',type=str,required=True,help='Output directory for the generated NetCDF profile files.')
+
+    return parser.parse_args()
+
+args = argument()
+
 import numpy as np
 from datetime import datetime
 from argopy import DataFetcher
@@ -7,7 +28,7 @@ import netCDF4 as NC
 import gsw
 
 params = ['DOXY', 'TEMP', 'PSAL']
-outdir = Path("./output")
+outdir = Path(args.outdir)
 outdir.mkdir(parents=True, exist_ok=True)
 
 start_date = datetime(2020, 7, 1).strftime("%Y-%m-%d")
@@ -41,6 +62,7 @@ def get_values(p, var):
     return pres[valid], values[valid], qc[valid]
 
 for i in range(profiles.sizes['N_PROF']):
+    print(i)
     p = profiles.isel(N_PROF=i)
     # Metadata to dump
     time = np.datetime_as_string(p['TIME'].values, unit='s')
@@ -49,7 +71,7 @@ for i in range(profiles.sizes['N_PROF']):
     lon = float(p['LONGITUDE'].values)
     wmo = str(p['PLATFORM_NUMBER'].values)
     cycle = int(p['CYCLE_NUMBER'].values)
-    outfile = outdir / f'{wmo}_{cycle:03d}.nc'
+    outfile = outdir / wmo / f'{wmo}_{cycle:03d}.nc'
     # Extract TEMP e PSAL w/o NaN
     PresT, Temp, QcT = get_values(p, 'TEMP')
     PresS, Sali, QcS = get_values(p, 'PSAL')
