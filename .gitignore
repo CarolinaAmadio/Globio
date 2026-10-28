@@ -1,6 +1,9 @@
 # all downloaded files 
 *.txt
 
+# dataset
+SUPEFLOAT
+
 # output dir of the downloader script 
 CORIOLIS/
 
