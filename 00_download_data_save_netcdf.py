@@ -71,7 +71,11 @@ for i in range(profiles.sizes['N_PROF']):
     lon = float(p['LONGITUDE'].values)
     wmo = str(p['PLATFORM_NUMBER'].values)
     cycle = int(p['CYCLE_NUMBER'].values)
-    outfile = outdir / wmo / f'{wmo}_{cycle:03d}.nc'
+
+    outdir_wmo = outdir / wmo
+    outdir_wmo.mkdir(parents=True, exist_ok=True)
+    outfile = outdir_wmo / f'{wmo}_{cycle:03d}.nc'
+
     # Extract TEMP e PSAL w/o NaN
     PresT, Temp, QcT = get_values(p, 'TEMP')
     PresS, Sali, QcS = get_values(p, 'PSAL')
