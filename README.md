@@ -15,6 +15,7 @@ The workflow is managed by `Launcher.sh`, which coordinates the execution of the
 |---|---|
 | `Launcher.sh` | Controls and coordinates the workflow execution. |
 | `00_download_data_save_netcdf.py` | Downloads data and saves them in NetCDF format. |
+| `dump_index.py` | Generate a Float Index file, with the list of profiles metadata (from bitsea git repository)|
 | `_ck_dataset_comparisons.py` | Performs optional dataset comparison checks. |
 
 
